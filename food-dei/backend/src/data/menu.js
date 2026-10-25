@@ -21,3 +21,5 @@ const menu = [
         categoria: "Entrada"
     }
 ];
+
+module.exports = menu;
