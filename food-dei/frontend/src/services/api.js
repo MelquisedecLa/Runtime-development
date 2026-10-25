@@ -1,41 +1,39 @@
-const BASE_URL = '/api'
+const BASE = '/api'
+const RESERVA_ID = 1
 
-// Función central: todas las peticiones pasan por aquí
-const request = async (path, options = {}) => {
-    let res
-    try {
-        res = await fetch(`${BASE_URL}${path}`, {
-        headers: { 'Content-Type': 'application/json' },
-        ...options,
-    })
-    } catch {
-    throw new Error('No se pudo conectar con el servidor')
-    }
+async function request(url, opciones) {
+  const res = await fetch(`${BASE}${url}`, opciones)
+  const data = await res.json().catch(() => ({}))
 
-    const data = await res.json().catch(() => ({}))
-
-    if (!res.ok) {
-    // El backend responde { mensaje: "Stock insuficiente" }
-    throw new Error(data.mensaje || 'Ocurrió un error inesperado')
-    }
-    return data
+  if (!res.ok) {
+    throw new Error(data.mensaje || data.message || data.error || 'Error en la petición')
+  }
+  return data
 }
+
+const jsonHeaders = { 'Content-Type': 'application/json' }
 
 export const getMenu = () => request('/menu')
 
 export const getReserva = () => request('/reserva')
 
 export const agregarAlimento = (alimentoId, cantidad = 1) =>
-    request('/reserva/agregar', {
+  request('/reserva/agregar', {
     method: 'POST',
-    body: JSON.stringify({ alimentoId, cantidad }),
-    })
+    headers: jsonHeaders,
+    body: JSON.stringify({ reservaId: RESERVA_ID, platoId: alimentoId, cantidad }),
+  })
 
 export const actualizarPorciones = (id, cantidad) =>
-    request(`/reserva/actualizar-porciones/${id}`, {
+  request(`/reserva/actualizar-porciones/${id}`, {
     method: 'PUT',
-    body: JSON.stringify({ cantidad }),
-    })
+    headers: jsonHeaders,
+    body: JSON.stringify({ reservaId: RESERVA_ID, cantidad }),
+  })
 
 export const eliminarAlimento = (id) =>
-    request(`/reserva/eliminar/${id}`, { method: 'DELETE' })
+  request(`/reserva/eliminar/${id}`, {
+    method: 'DELETE',
+    headers: jsonHeaders,
+    body: JSON.stringify({ reservaId: RESERVA_ID }),
+  })

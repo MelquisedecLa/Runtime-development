@@ -1,81 +1,79 @@
 import { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'reactstrap'
-import {
-  getMenu,
-  getReserva,
-  agregarAlimento,
-  actualizarPorciones,
-  eliminarAlimento,
-} from './services/api'
+import * as api from './services/api'
 import PanelSuperior from './components/PanelSuperior'
 import AlertaError from './components/AlertaError'
-import MenuGrid from './components/MenuGrid'
 import Carrito from './components/Carrito'
+import MenuGrid from './components/MenuGrid'
 
 function App() {
   const [menu, setMenu] = useState([])
   const [reserva, setReserva] = useState({ saldo: 0, itemsReservados: [], total: 0 })
   const [error, setError] = useState(null)
-  const [cargando, setCargando] = useState(true)
+  const [errorId, setErrorId] = useState(0)
+  const [loading, setLoading] = useState(false)
 
-  // Vuelve a pedir menú y reserva al backend
-  const refrescar = async () => {
-    const [menuData, reservaData] = await Promise.all([getMenu(), getReserva()])
+  const mostrarError = (mensaje) => {
+    setError(mensaje)
+    setErrorId((n) => n + 1) // fuerza que el alert reaparezca aunque el mensaje se repita
+  }
+
+  const cargarDatos = async () => {
+    const [menuData, reservaData] = await Promise.all([api.getMenu(), api.getReserva()])
     setMenu(menuData)
     setReserva(reservaData)
   }
 
-  // Carga inicial
   useEffect(() => {
-    refrescar()
-      .catch((err) => setError({ mensaje: err.message, id: Date.now() }))
-      .finally(() => setCargando(false))
+    cargarDatos().catch((e) => mostrarError(e.message))
   }, [])
 
-  // Envuelve cualquier acción: loading + error + refresco
+  // Patrón común: loading -> acción -> refrescar -> manejar error -> quitar loading
   const ejecutar = async (accion) => {
-    setCargando(true)
+    setLoading(true)
     setError(null)
     try {
       await accion()
-      await refrescar()
-    } catch (err) {
-      setError({ mensaje: err.message, id: Date.now() })
+      await cargarDatos()
+    } catch (e) {
+      mostrarError(e.message)
     } finally {
-      setCargando(false)
+      setLoading(false)
     }
   }
 
-  const handleAgregar = (alimentoId) => ejecutar(() => agregarAlimento(alimentoId, 1))
-  const handleActualizar = (id, cantidad) => ejecutar(() => actualizarPorciones(id, cantidad))
-  const handleEliminar = (id) => ejecutar(() => eliminarAlimento(id))
+  const agregar = (alimentoId) => ejecutar(() => api.agregarAlimento(alimentoId, 1))
+
+  const eliminar = (id) => ejecutar(() => api.eliminarAlimento(id))
+
+  const actualizar = (id, cantidad) => {
+    if (cantidad < 1) return eliminar(id)
+    return ejecutar(() => api.actualizarPorciones(id, cantidad))
+  }
 
   return (
-    <>
+    <Container className="py-3">
+      <AlertaError key={errorId} mensaje={error} />
       <PanelSuperior saldo={reserva.saldo} total={reserva.total} />
+      {loading && <p className="text-muted">Cargando...</p>}
 
-      <Container className="mt-3">
-        <AlertaError error={error} />
-
-        <Row>
-          <Col xs="12" md="8">
-            <h4 className="mb-3">Menú del día</h4>
-            <MenuGrid menu={menu} cargando={cargando} onAgregar={handleAgregar} />
-          </Col>
-
-          <Col xs="12" md="4">
-            <Carrito
-              items={reserva.itemsReservados}
-              menu={menu}
-              total={reserva.total}
-              cargando={cargando}
-              onActualizar={handleActualizar}
-              onEliminar={handleEliminar}
-            />
-          </Col>
-        </Row>
-      </Container>
-    </>
+      <Row>
+        <Col xs="12" md="8">
+          <h4>Menú del Día</h4>
+          <MenuGrid menu={menu} loading={loading} onAgregar={agregar} />
+        </Col>
+        <Col xs="12" md="4">
+          <h4>Tu Bandeja de Reserva</h4>
+          <Carrito
+            items={reserva.itemsReservados}
+            menu={menu}
+            loading={loading}
+            onActualizar={actualizar}
+            onEliminar={eliminar}
+          />
+        </Col>
+      </Row>
+    </Container>
   )
 }
 

@@ -1,13 +1,12 @@
-//Esto es un placeholder, es decir es solo para que el codigo furule hasta que llegue Luis a chambiar
 import { Alert, Badge } from 'reactstrap'
 
 function PanelSuperior({ saldo, total }) {
   return (
-    <Alert color="info" className="mb-0 rounded-0 d-flex justify-content-between">
-      <span>Tu saldo actual: ${Number(saldo).toFixed(2)}</span>
-      <span>
-        Total de tu Reserva: <Badge color="dark" pill>${Number(total).toFixed(2)}</Badge>
-      </span>
+    <Alert color="info" className="d-flex justify-content-between align-items-center">
+      <span>Tu saldo actual: ${saldo.toFixed(2)}</span>
+      <Badge color="dark" pill>
+        Total de tu Reserva: ${total.toFixed(2)}
+      </Badge>
     </Alert>
   )
 }

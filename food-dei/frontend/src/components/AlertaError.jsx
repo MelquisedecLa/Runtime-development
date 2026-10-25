@@ -1,14 +1,9 @@
-//Esto es un placeholder, es decir es solo para que el codigo furule hasta que llegue Luis a chambiar
 import { UncontrolledAlert } from 'reactstrap'
 
-function AlertaError({ error }) {
-  if (!error) return null
+function AlertaError({ mensaje }) {
+  if (!mensaje) return null
 
-  return (
-    <UncontrolledAlert color="warning" key={error.id}>
-      {error.mensaje}
-    </UncontrolledAlert>
-  )
+  return <UncontrolledAlert color="warning">{mensaje}</UncontrolledAlert>
 }
 
 export default AlertaError
