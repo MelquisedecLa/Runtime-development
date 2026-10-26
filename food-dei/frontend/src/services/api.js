@@ -37,3 +37,6 @@ export const eliminarAlimento = (id) =>
     headers: jsonHeaders,
     body: JSON.stringify({ reservaId: RESERVA_ID }),
   })
+
+  export const confirmarReserva = () =>
+  request('/reserva/confirmar', { method: 'POST' })

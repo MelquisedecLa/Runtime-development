@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Container, Row, Col } from 'reactstrap'
+import { Container, Row, Col, Alert } from 'reactstrap'
 import * as api from './services/api'
 import PanelSuperior from './components/PanelSuperior'
 import AlertaError from './components/AlertaError'
 import Carrito from './components/Carrito'
 import MenuGrid from './components/MenuGrid'
 import TemporizadorReserva from './components/TemporizadorReserva'
+import BotonConfirmar from './components/BotonConfirmar'
 
 function App() {
   const [menu, setMenu] = useState([])
@@ -13,10 +14,11 @@ function App() {
   const [error, setError] = useState(null)
   const [errorId, setErrorId] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [exito, setExito] = useState(null)
 
   const mostrarError = (mensaje) => {
     setError(mensaje)
-    setErrorId((n) => n + 1) // fuerza que el alert reaparezca aunque el mensaje se repita
+    setErrorId((n) => n + 1)
   }
 
   const cargarDatos = async () => {
@@ -29,7 +31,6 @@ function App() {
     cargarDatos().catch((e) => mostrarError(e.message))
   }, [])
 
-  // Patrón común: loading -> acción -> refrescar -> manejar error -> quitar loading
   const ejecutar = async (accion) => {
     setLoading(true)
     setError(null)
@@ -44,7 +45,6 @@ function App() {
   }
 
   const agregar = (alimentoId) => ejecutar(() => api.agregarAlimento(alimentoId, 1))
-
   const eliminar = (id) => ejecutar(() => api.eliminarAlimento(id))
 
   const actualizar = (id, cantidad) => {
@@ -52,14 +52,35 @@ function App() {
     return ejecutar(() => api.actualizarPorciones(id, cantidad))
   }
 
+  const confirmar = () => {
+    setExito(null)
+    return ejecutar(async () => {
+      const res = await api.confirmarReserva()
+      setExito(res?.mensaje || 'Reserva confirmada con éxito')
+    })
+  }
+
+  // Saldo disponible = saldo inicial - total reservado (si el backend ya manda "saldo", se usa ese)
+  const saldoDisponible = reserva.saldo ?? (reserva.saldoInicial ?? 0) - (reserva.total ?? 0)
+
   return (
     <Container className="py-3">
       <AlertaError key={errorId} mensaje={error} />
-      <TemporizadorReserva
-      fechaExpiracion={reserva.fechaExpiracion}
-      onExpirar={cargarDatos}
-      />
-      <PanelSuperior saldo={reserva.saldoInicial} total={reserva.total} />
+
+      {exito && (
+        <Alert color="success" toggle={() => setExito(null)}>
+          {exito}
+        </Alert>
+      )}
+
+      {reserva.estado === 'pendiente' && (
+        <TemporizadorReserva
+          fechaExpiracion={reserva.fechaExpiracion}
+          onExpirar={cargarDatos}
+        />
+      )}
+
+      <PanelSuperior saldo={saldoDisponible} total={reserva.total} />
       {loading && <p className="text-muted">Cargando...</p>}
 
       <Row>
@@ -76,12 +97,16 @@ function App() {
             onActualizar={actualizar}
             onEliminar={eliminar}
           />
+          <BotonConfirmar
+            items={reserva.itemsReservados}
+            estado={reserva.estado}
+            cargando={loading}
+            onConfirmar={confirmar}
+          />
         </Col>
       </Row>
     </Container>
   )
 }
-
-
 
 export default App
