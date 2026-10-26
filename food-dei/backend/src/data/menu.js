@@ -22,4 +22,6 @@ const menu = [
     }
 ];
 
-module.exports = { menu };
+module.exports = {
+    menu
+};
