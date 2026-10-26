@@ -54,7 +54,7 @@ function App() {
   return (
     <Container className="py-3">
       <AlertaError key={errorId} mensaje={error} />
-      <PanelSuperior saldo={reserva.saldo} total={reserva.total} />
+      <PanelSuperior saldo={reserva.saldoInicial} total={reserva.total} />
       {loading && <p className="text-muted">Cargando...</p>}
 
       <Row>

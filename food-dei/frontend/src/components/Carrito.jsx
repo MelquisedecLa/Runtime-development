@@ -8,26 +8,26 @@ function Carrito({ items, menu, loading, onActualizar, onEliminar }) {
   return (
     <ListGroup>
       {items.map((item) => {
-        const plato = menu.find((p) => p.id === item.id)
+        const plato = menu.find((p) => p.id === item.platoId)
 
         return (
           <ListGroupItem
-            key={item.id}
+            key={item.platoId}
             className="d-flex justify-content-between align-items-center"
           >
-            <span>{plato ? plato.nombre : `Plato ${item.id}`}</span>
+            <span>{plato ? plato.nombre : `Plato ${item.platoId}`}</span>
 
             <ButtonGroup size="sm">
               <Button
                 disabled={loading}
-                onClick={() => onActualizar(item.id, item.cantidad - 1)}
+                onClick={() => onActualizar(item.platoId, item.cantidad - 1)}
               >
                 -
               </Button>
               <Button disabled>{item.cantidad}</Button>
               <Button
                 disabled={loading}
-                onClick={() => onActualizar(item.id, item.cantidad + 1)}
+                onClick={() => onActualizar(item.platoId, item.cantidad + 1)}
               >
                 +
               </Button>
@@ -38,7 +38,7 @@ function Carrito({ items, menu, loading, onActualizar, onEliminar }) {
               outline
               size="sm"
               disabled={loading}
-              onClick={() => onEliminar(item.id)}
+              onClick={() => onEliminar(item.platoId)}
             >
               Quitar
             </Button>
