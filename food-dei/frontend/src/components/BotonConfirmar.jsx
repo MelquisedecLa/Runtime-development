@@ -10,7 +10,7 @@ function BotonConfirmar({ items, estado, cargando, onConfirmar }) {
       block
       className="mt-3"
       disabled={vacia || cargando || confirmada}
-      onClick={onConfirmar}
+      onClick={() => onConfirmar()}
     >
       {confirmada ? 'Reserva confirmada' : 'Confirmar reserva'}
     </Button>

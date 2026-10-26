@@ -55,7 +55,7 @@ function App() {
   const confirmar = () => {
     setExito(null)
     return ejecutar(async () => {
-      const res = await api.confirmarReserva()
+      const res = await api.confirmarReserva(reserva.id)
       setExito(res?.mensaje || 'Reserva confirmada con éxito')
     })
   }
@@ -110,3 +110,4 @@ function App() {
 }
 
 export default App
+
