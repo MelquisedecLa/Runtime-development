@@ -5,6 +5,7 @@ import PanelSuperior from './components/PanelSuperior'
 import AlertaError from './components/AlertaError'
 import Carrito from './components/Carrito'
 import MenuGrid from './components/MenuGrid'
+import TemporizadorReserva from './components/TemporizadorReserva'
 
 function App() {
   const [menu, setMenu] = useState([])
@@ -54,6 +55,10 @@ function App() {
   return (
     <Container className="py-3">
       <AlertaError key={errorId} mensaje={error} />
+      <TemporizadorReserva
+      fechaExpiracion={reserva.fechaExpiracion}
+      onExpirar={cargarDatos}
+      />
       <PanelSuperior saldo={reserva.saldoInicial} total={reserva.total} />
       {loading && <p className="text-muted">Cargando...</p>}
 
@@ -76,5 +81,7 @@ function App() {
     </Container>
   )
 }
+
+
 
 export default App
