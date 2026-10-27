@@ -1,179 +1,242 @@
 const { menu } = require('../data/menu');
 const { reserva } = require('../data/reserva');
 
-function calcularTotal(reserva) {
-    if (!menu || !reserva || !reserva.itemsReservados) {
-        throw new Error('Datos de reserva o menú no válidos');
+const redondearDinero = (valor) => Math.round((valor + Number.EPSILON) * 100) / 100;
+
+function calcularTotal(reservaActual) {
+    if (!reservaActual || !Array.isArray(reservaActual.itemsReservados)) {
+        throw new Error('Datos de reserva no válidos');
     }
-    const total = reserva.itemsReservados.reduce((acc, item) => {
-        const plato = menu.find(p => p.id === item.platoId);
-        return acc + (plato.precio * item.cantidad);
-    }, 0);
-    return total;
+
+    return redondearDinero(
+        reservaActual.itemsReservados.reduce((acumulado, item) => {
+            const plato = menu.find((p) => p.id === item.id);
+
+            if (!plato) {
+                throw new Error(`El plato ${item.id} ya no existe en el menú`);
+            }
+
+            return acumulado + plato.precio * item.cantidad;
+        }, 0)
+    );
 }
 
-function verificarExpiracionReserva(reserva) {
-    if (reserva.estado !== 'pendiente') {
-        return false;
+function verificarExpiracionReserva(reservaActual) {
+    if (reservaActual.estado !== 'pendiente') {
+        return;
     }
-    if (new Date() >= new Date(reserva.fechaExpiracion)) {
-        reserva.estado = 'expirada';
-        return false;
+
+    if (new Date() < new Date(reservaActual.fechaExpiracion)) {
+        return;
     }
-    return true;
+
+    // Una reserva pendiente ya había apartado estas unidades; al expirar se liberan.
+    for (const item of reservaActual.itemsReservados) {
+        const plato = menu.find((p) => p.id === item.id);
+
+        if (plato) {
+            plato.stock += item.cantidad;
+        }
+    }
+
+    reservaActual.itemsReservados = [];
+    reservaActual.total = 0;
+    reservaActual.estado = 'expirada';
 }
 
 function buscarReserva(reservaId) {
     if (reserva.id !== Number(reservaId)) {
         throw new Error('Reserva no encontrada');
     }
+
     return reserva;
+}
+
+function validarReservaPendiente(reservaActual) {
+    verificarExpiracionReserva(reservaActual);
+
+    if (reservaActual.estado === 'expirada') {
+        throw new Error('La reserva ha expirado');
+    }
+
+    if (reservaActual.estado !== 'pendiente') {
+        throw new Error('La reserva no está pendiente');
+    }
 }
 
 function getReserva(reservaId) {
-    buscarReserva(reservaId);
-    return reserva;
+    const reservaActual = buscarReserva(reservaId);
+    verificarExpiracionReserva(reservaActual);
+    return reservaActual;
 }
 
-function agregarReserva(reservaId, platoId, cantidad) {
-    const reserva = buscarReserva(reservaId);
-    platoId = Number(platoId);
+function agregarReserva(reservaId, alimentoId, cantidad) {
+    const reservaActual = buscarReserva(reservaId);
+    validarReservaPendiente(reservaActual);
+
+    alimentoId = Number(alimentoId);
     cantidad = Number(cantidad);
+
+    if (!Number.isInteger(alimentoId)) {
+        throw new Error('El id del alimento no es válido');
+    }
+
     if (!Number.isInteger(cantidad) || cantidad <= 0) {
         throw new Error('La cantidad debe ser un entero positivo');
     }
-    if (reserva.estado !== 'pendiente') {
-        throw new Error('La reserva no está pendiente');
-    }
-    if (!verificarExpiracionReserva(reserva)) {
-        throw new Error('La reserva ha expirado');
-    }
-    const plato = menu.find(p => p.id === platoId);
+
+    const plato = menu.find((p) => p.id === alimentoId);
+
     if (!plato) {
         throw new Error('Plato no encontrado en el menú');
     }
-    const itemExistente = reserva.itemsReservados.find(
-        item => item.platoId === platoId
-    );
-    const cantidadActual = itemExistente ? itemExistente.cantidad : 0;
-    const cantidadTotal = cantidadActual + cantidad;
-    if (cantidadTotal > plato.stock) {
-        throw new Error('Stock insuficiente');
-    }
-    const nuevoTotal = calcularTotal(reserva) + plato.precio * cantidad;
-    if (nuevoTotal > reserva.saldoInicial) {
-        throw new Error('Saldo insuficiente');
-    }
-    if (itemExistente) {
-        itemExistente.cantidad = cantidadTotal;
-    } else {
-        reserva.itemsReservados.push({ platoId, cantidad });
-    }
-    reserva.total = nuevoTotal;
 
-    return reserva;
-}
-
-function actualizarPorciones(reservaId, platoId, cantidad) {
-    const reserva = buscarReserva(reservaId);
-    platoId = Number(platoId);
-    cantidad = Number(cantidad);
-    if (!Number.isInteger(cantidad) || cantidad <= 0) {
-        throw new Error('La cantidad debe ser un entero positivo');
-    }
-    if (reserva.estado !== 'pendiente') {
-        throw new Error('La reserva no está pendiente');
-    }
-    if (!verificarExpiracionReserva(reserva)) {
-        throw new Error('La reserva ha expirado');
-    }
-    const item = reserva.itemsReservados.find(
-        i => i.platoId === platoId
-    );
-    if (!item) {
-        throw new Error('Plato no encontrado en la reserva');
-    }
-    const plato = menu.find(p => p.id === platoId);
-    if (!plato) {
-        throw new Error('Plato no encontrado en el menú');
-    }
     if (cantidad > plato.stock) {
         throw new Error('Stock insuficiente');
     }
-    const totalActual = calcularTotal(reserva);
-    const nuevoTotal =
-        totalActual -
-        (plato.precio * item.cantidad) +
-        (plato.precio * cantidad);
-    if (nuevoTotal > reserva.saldoInicial) {
+
+    const nuevoTotal = redondearDinero(reservaActual.total + plato.precio * cantidad);
+
+    if (nuevoTotal > reservaActual.saldo) {
         throw new Error('Saldo insuficiente');
     }
-    item.cantidad = cantidad;
-    reserva.total = nuevoTotal;
 
-    return reserva;
+    const itemExistente = reservaActual.itemsReservados.find(
+        (item) => item.id === alimentoId
+    );
+
+    if (itemExistente) {
+        itemExistente.cantidad += cantidad;
+    } else {
+        reservaActual.itemsReservados.push({ id: alimentoId, cantidad });
+    }
+
+    // Apartar temporalmente las unidades mientras la reserva está pendiente.
+    plato.stock -= cantidad;
+    reservaActual.total = nuevoTotal;
+
+    return reservaActual;
 }
 
-function eliminarPlato(reservaId, platoId) {
-    const reserva = buscarReserva(reservaId);
-    platoId = Number(platoId);
-    if (reserva.estado !== 'pendiente') {
-        throw new Error('La reserva no está pendiente');
+function actualizarPorciones(reservaId, alimentoId, nuevaCantidad) {
+    const reservaActual = buscarReserva(reservaId);
+    validarReservaPendiente(reservaActual);
+
+    alimentoId = Number(alimentoId);
+    nuevaCantidad = Number(nuevaCantidad);
+
+    if (!Number.isInteger(nuevaCantidad) || nuevaCantidad <= 0) {
+        throw new Error('La cantidad debe ser mayor a 0');
     }
-    if (!verificarExpiracionReserva(reserva)) {
-        throw new Error('La reserva ha expirado');
-    }
-    const idBuscado = reserva.itemsReservados.findIndex(
-        item => item.platoId === platoId
+
+    const item = reservaActual.itemsReservados.find(
+        (elemento) => elemento.id === alimentoId
     );
-    if (idBuscado === -1) {
+
+    if (!item) {
         throw new Error('Plato no encontrado en la reserva');
     }
-    reserva.itemsReservados.splice(idBuscado, 1);
-    reserva.total = calcularTotal(reserva);
 
-    return reserva;
+    const plato = menu.find((p) => p.id === alimentoId);
+
+    if (!plato) {
+        throw new Error('Plato no encontrado en el menú');
+    }
+
+    const diferencia = nuevaCantidad - item.cantidad;
+
+    if (diferencia > 0 && diferencia > plato.stock) {
+        throw new Error('Stock insuficiente');
+    }
+
+    const nuevoTotal = redondearDinero(
+        reservaActual.total + diferencia * plato.precio
+    );
+
+    if (nuevoTotal > reservaActual.saldo) {
+        throw new Error('Saldo insuficiente para esta cantidad');
+    }
+
+    // diferencia > 0 reserva más stock; diferencia < 0 devuelve stock.
+    plato.stock -= diferencia;
+    item.cantidad = nuevaCantidad;
+    reservaActual.total = nuevoTotal;
+
+    return reservaActual;
+}
+
+function eliminarPlato(reservaId, alimentoId) {
+    const reservaActual = buscarReserva(reservaId);
+    validarReservaPendiente(reservaActual);
+
+    alimentoId = Number(alimentoId);
+
+    const indice = reservaActual.itemsReservados.findIndex(
+        (item) => item.id === alimentoId
+    );
+
+    if (indice === -1) {
+        throw new Error('Plato no encontrado en la reserva');
+    }
+
+    const item = reservaActual.itemsReservados[indice];
+    const plato = menu.find((p) => p.id === alimentoId);
+
+    if (!plato) {
+        throw new Error('Plato no encontrado en el menú');
+    }
+
+    // El endpoint DELETE debe devolver las unidades al stock general.
+    plato.stock += item.cantidad;
+    reservaActual.itemsReservados.splice(indice, 1);
+    reservaActual.total = calcularTotal(reservaActual);
+
+    return reservaActual;
 }
 
 function confirmarReserva(reservaId) {
-    const reserva = buscarReserva(reservaId);
-    if (reserva.estado !== 'pendiente') {
-        throw new Error('La reserva no está pendiente');
-    }
-    if (!verificarExpiracionReserva(reserva)) {
-        throw new Error('La reserva ha expirado');
-    }
-    if (reserva.itemsReservados.length === 0) {
+    const reservaActual = buscarReserva(reservaId);
+    validarReservaPendiente(reservaActual);
+
+    if (reservaActual.itemsReservados.length === 0) {
         throw new Error('No se puede confirmar una reserva sin platos');
     }
-    for (const item of reserva.itemsReservados) {
-        const plato = menu.find(p => p.id === item.platoId);
-        if (!plato) {
-            throw new Error('Uno de los platos no existe en el menú');
-        }
-        if (plato.stock < item.cantidad) {
-            throw new Error(`Stock insuficiente para el plato ${item.platoId}`);
-        }
-    }
-    const total = calcularTotal(reserva);
-    if (total > reserva.saldoInicial) {
+
+    const total = calcularTotal(reservaActual);
+
+    if (total > reservaActual.saldo) {
         throw new Error('Saldo insuficiente');
     }
-    for (const item of reserva.itemsReservados) {
-        const plato = menu.find(p => p.id === item.platoId);
-        plato.stock -= item.cantidad;
-    }
-    reserva.total = total;
-    reserva.saldoInicial -= total;
-    reserva.estado = 'confirmada';
 
-    return reserva;
+    // El stock ya fue apartado al agregar/modificar; no se descuenta otra vez.
+    reservaActual.total = total;
+    reservaActual.saldo = redondearDinero(reservaActual.saldo - total);
+    reservaActual.estado = 'confirmada';
+
+    return reservaActual;
+}
+
+function reiniciarReserva(reservaId) {
+    const reservaActual = buscarReserva(reservaId);
+    verificarExpiracionReserva(reservaActual);
+
+    if (reservaActual.estado === 'pendiente') {
+        throw new Error('La reserva actual todavía está pendiente');
+    }
+
+    reservaActual.itemsReservados = [];
+    reservaActual.total = 0;
+    reservaActual.estado = 'pendiente';
+    reservaActual.fechaExpiracion = new Date(Date.now() + 1 * 60 * 1000);
+
+    return reservaActual;
 }
 
 module.exports = {
     getReserva,
-    agregarReserva, 
-    actualizarPorciones, 
+    agregarReserva,
+    actualizarPorciones,
     eliminarPlato,
-    confirmarReserva
+    confirmarReserva,
+    reiniciarReserva
 };
