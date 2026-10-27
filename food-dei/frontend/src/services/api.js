@@ -1,6 +1,7 @@
 const BASE = '/api'
 const RESERVA_ID = 1
 
+
 async function request(url, opciones) {
   const res = await fetch(`${BASE}${url}`, opciones)
   const data = await res.json().catch(() => ({}))
@@ -34,6 +35,13 @@ export const actualizarPorciones = (id, cantidad) =>
 export const eliminarAlimento = (id) =>
   request(`/reserva/eliminar/${id}`, {
     method: 'DELETE',
+    headers: jsonHeaders,
+    body: JSON.stringify({ reservaId: RESERVA_ID }),
+  })
+
+export const confirmarReserva = () =>
+  request('/reserva/confirmar', {
+    method: 'POST',
     headers: jsonHeaders,
     body: JSON.stringify({ reservaId: RESERVA_ID }),
   })
