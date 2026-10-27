@@ -17,6 +17,7 @@ function App() {
   const [error, setError] = useState(null)
   const [errorId, setErrorId] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [tiempoRestante, setTiempoRestante] = useState(0)
 
   const mostrarError = (mensaje) => {
     setError(mensaje)
@@ -39,16 +40,20 @@ function App() {
     Promise.all([api.getMenu(), api.getReserva()])
       .then(([menuData, reservaData]) => {
         if (!activo) return
+
         setMenu(menuData)
         setReserva(reservaData)
       })
       .catch((e) => {
         if (!activo) return
+
         setError(e.message)
         setErrorId((n) => n + 1)
       })
       .finally(() => {
-        if (activo) setLoading(false)
+        if (activo) {
+          setLoading(false)
+        }
       })
 
     return () => {
@@ -90,7 +95,8 @@ function App() {
   const reiniciar = () =>
     ejecutar(() => api.reiniciarReserva())
 
-  // La guía pide que el saldo se descuente visualmente mientras se arma la reserva.
+  // La guía pide que el saldo se descuente visualmente
+  // mientras se arma la reserva.
   const saldoDisponible =
     reserva.estado === 'pendiente'
       ? Math.max(0, reserva.saldo - reserva.total)
@@ -98,16 +104,89 @@ function App() {
 
   const reservaPendiente = reserva.estado === 'pendiente'
 
+  useEffect(() => {
+    // Si la reserva ya no está pendiente,
+    // no necesitamos seguir ejecutando el contador.
+    if (
+      reserva.estado !== 'pendiente' ||
+      !reserva.fechaExpiracion
+    ) {
+      return
+    }
+
+    const actualizarContador = async () => {
+      const ahora = new Date()
+      const expiracion = new Date(reserva.fechaExpiracion)
+      const diferencia = expiracion - ahora
+
+      const segundos = Math.max(
+        0,
+        Math.floor(diferencia / 1000)
+      )
+
+      setTiempoRestante(segundos)
+
+      // Cuando llega a cero consultamos nuevamente el backend.
+      // El backend detectará que la reserva expiró y devolverá
+      // el nuevo estado.
+      if (segundos === 0) {
+        try {
+          await cargarDatos()
+        } catch (e) {
+          mostrarError(e.message)
+        }
+      }
+    }
+
+    // Ejecutamos una vez inmediatamente para no esperar
+    // un segundo antes de mostrar el tiempo.
+    actualizarContador()
+
+    const intervalo = setInterval(
+      actualizarContador,
+      1000
+    )
+
+    return () => clearInterval(intervalo)
+  }, [reserva.fechaExpiracion, reserva.estado])
+
+  const formatearTiempo = (segundos) => {
+    const minutos = Math.floor(segundos / 60)
+    const segundosRestantes = segundos % 60
+
+    return `${String(minutos).padStart(2, '0')}:${String(
+      segundosRestantes
+    ).padStart(2, '0')}`
+  }
+
   return (
     <Container className="py-3">
-      <AlertaError key={errorId} mensaje={error} />
+      <AlertaError
+        key={errorId}
+        mensaje={error}
+      />
 
       <PanelSuperior
         saldo={saldoDisponible}
         total={reserva.total}
       />
 
-      {loading && <p className="text-muted">Cargando...</p>}
+      {reserva.estado === 'pendiente' ? (
+        <p className="mb-1">
+          ⏱ Tiempo restante:{' '}
+          {formatearTiempo(tiempoRestante)}
+        </p>
+      ) : reserva.estado === 'expirada' ? (
+        <p className="text-danger mb-1">
+          ⏱ Reserva expirada
+        </p>
+      ) : null}
+
+      {loading && (
+        <p className="text-muted">
+          Cargando...
+        </p>
+      )}
 
       <Row>
         <Col xs="12" md="8">
@@ -137,7 +216,10 @@ function App() {
             <Button
               color="success"
               className="mt-3 w-100"
-              disabled={loading || reserva.itemsReservados.length === 0}
+              disabled={
+                loading ||
+                reserva.itemsReservados.length === 0
+              }
               onClick={confirmar}
             >
               Confirmar Reserva
