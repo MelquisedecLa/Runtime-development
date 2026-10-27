@@ -1,4 +1,3 @@
-//Esto es provisional
 const express = require('express')
 const cors = require('cors')
 const menuRoutes = require('./routes/menu.routes')

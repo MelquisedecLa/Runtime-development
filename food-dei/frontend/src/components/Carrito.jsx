@@ -1,33 +1,39 @@
 import { ListGroup, ListGroupItem, ButtonGroup, Button } from 'reactstrap'
 
-function Carrito({ items, menu, loading, onActualizar, onEliminar }) {
+function Carrito({ items, menu, loading, estado, onActualizar, onEliminar }) {
   if (items.length === 0) {
     return <p className="text-muted">Tu bandeja está vacía.</p>
   }
 
+  const bloqueado = loading || estado !== 'pendiente'
+
   return (
     <ListGroup>
       {items.map((item) => {
-        const plato = menu.find((p) => p.id === item.platoId)
+        const plato = menu.find((p) => p.id === item.id)
 
         return (
           <ListGroupItem
-            key={item.platoId}
-            className="d-flex justify-content-between align-items-center"
+            key={item.id}
+            className="d-flex justify-content-between align-items-center gap-2"
           >
-            <span>{plato ? plato.nombre : `Plato ${item.platoId}`}</span>
+            <span className="flex-grow-1">
+              {plato ? plato.nombre : `Plato ${item.id}`}
+            </span>
 
             <ButtonGroup size="sm">
               <Button
-                disabled={loading}
-                onClick={() => onActualizar(item.platoId, item.cantidad - 1)}
+                disabled={bloqueado}
+                onClick={() => onActualizar(item.id, item.cantidad - 1)}
               >
                 -
               </Button>
+
               <Button disabled>{item.cantidad}</Button>
+
               <Button
-                disabled={loading}
-                onClick={() => onActualizar(item.platoId, item.cantidad + 1)}
+                disabled={bloqueado}
+                onClick={() => onActualizar(item.id, item.cantidad + 1)}
               >
                 +
               </Button>
@@ -37,8 +43,8 @@ function Carrito({ items, menu, loading, onActualizar, onEliminar }) {
               color="danger"
               outline
               size="sm"
-              disabled={loading}
-              onClick={() => onEliminar(item.platoId)}
+              disabled={bloqueado}
+              onClick={() => onEliminar(item.id)}
             >
               Quitar
             </Button>

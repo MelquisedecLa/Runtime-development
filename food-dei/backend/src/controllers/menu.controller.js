@@ -1,9 +1,7 @@
-const menuData = require('../data/menu')
-
-const menu = Array.isArray(menuData) ? menuData : menuData.menu
+const { menu } = require('../data/menu');
 
 const obtenerMenu = (req, res) => {
-  res.status(200).json(menu)
-}
+    return res.status(200).json(menu);
+};
 
-module.exports = { obtenerMenu }
+module.exports = { obtenerMenu };
