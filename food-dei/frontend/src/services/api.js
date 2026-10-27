@@ -1,6 +1,5 @@
 const BASE = '/api'
 
-
 async function request(url, opciones) {
   const res = await fetch(`${BASE}${url}`, opciones)
   const data = await res.json().catch(() => ({}))
@@ -52,11 +51,4 @@ export const confirmarReserva = () =>
 export const reiniciarReserva = () =>
   request('/reserva/reiniciar', {
     method: 'POST',
-  })
-
-export const confirmarReserva = () =>
-  request('/reserva/confirmar', {
-    method: 'POST',
-    headers: jsonHeaders,
-    body: JSON.stringify({ reservaId: RESERVA_ID }),
   })

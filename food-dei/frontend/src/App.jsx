@@ -5,8 +5,6 @@ import PanelSuperior from './components/PanelSuperior'
 import AlertaError from './components/AlertaError'
 import Carrito from './components/Carrito'
 import MenuGrid from './components/MenuGrid'
-import TemporizadorReserva from './components/TemporizadorReserva'
-import BotonConfirmar from './components/BotonConfirmar'
 
 function App() {
   const [menu, setMenu] = useState([])
@@ -175,12 +173,12 @@ function App() {
 
       {reserva.estado === 'pendiente' ? (
         <p className="mb-1">
-          ⏱ Tiempo restante:{' '}
+           Tiempo restante:{' '}
           {formatearTiempo(tiempoRestante)}
         </p>
       ) : reserva.estado === 'expirada' ? (
         <p className="text-danger mb-1">
-          ⏱ Reserva expirada
+           Reserva expirada
         </p>
       ) : null}
 
@@ -255,4 +253,3 @@ function App() {
 }
 
 export default App
-
