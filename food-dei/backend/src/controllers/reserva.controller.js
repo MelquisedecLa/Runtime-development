@@ -13,8 +13,6 @@ const getReserva = (req, res) => {
 
 const agregarReserva = (req, res) => {
     try {
-        // La guía solicita exactamente { alimentoId, cantidad }.
-        // platoId se acepta como compatibilidad con versiones anteriores del frontend.
         const { alimentoId, platoId, cantidad } = req.body;
         const idAlimento = alimentoId ?? platoId;
 
